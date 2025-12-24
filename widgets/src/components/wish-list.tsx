@@ -1,8 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Layout } from '@/components/layout';
-
-type WishCategory = 'toy' | 'experience' | 'kindness' | 'magic';
-type WishPriority = 'dream wish' | 'hopeful wish' | 'small wish';
+import { WishCategory, WishPriority } from '@/types/wish';
 
 export interface StoredWish {
   id: string;
@@ -34,7 +32,8 @@ const priorityEmojis: Record<WishPriority, string> = {
 
 // Glow intensity based on priority
 const priorityGlow: Record<WishPriority, string> = {
-  'dream wish': '0 0 20px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.5)',
+  'dream wish':
+    '0 0 20px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.5)',
   'hopeful wish': '0 0 12px rgba(186, 104, 200, 0.5)',
   'small wish': '0 0 8px rgba(79, 195, 247, 0.3)',
 };
@@ -111,9 +110,7 @@ export function WishList({ data }: WishListProps) {
             >
               <p className="text-xl mb-2">🌟</p>
               <p className="text-lg">No wishes yet...</p>
-              <p className="text-sm mt-2">
-                Ask goose to make a wish for you!
-              </p>
+              <p className="text-sm mt-2">Ask goose to make a wish for you!</p>
             </div>
           ) : (
             <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
@@ -202,14 +199,13 @@ export function WishList({ data }: WishListProps) {
                               className="text-xs font-medium"
                               style={{ color: '#d4af37' }}
                             >
-                              🎉 Granted: {new Date(wish.grantedAt).toLocaleString()}
+                              🎉 Granted:{' '}
+                              {new Date(wish.grantedAt).toLocaleString()}
                             </span>
                           ) : (
-                            <span
-                              className="text-xs"
-                              style={{ opacity: 0.7 }}
-                            >
-                              Wished: {new Date(wish.timestamp).toLocaleString()}
+                            <span className="text-xs" style={{ opacity: 0.7 }}>
+                              Wished:{' '}
+                              {new Date(wish.timestamp).toLocaleString()}
                             </span>
                           )}
                         </div>

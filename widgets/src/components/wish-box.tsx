@@ -1,8 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Layout } from '@/components/layout';
-
-type WishCategory = 'toy' | 'experience' | 'kindness' | 'magic';
-type WishPriority = 'dream wish' | 'hopeful wish' | 'small wish';
+import { WishCategory, WishPriority } from '@/types/wish';
 
 export interface WishData {
   wish?: string;
@@ -84,7 +82,7 @@ export function WishBox({ data }: WishBoxProps) {
           >
             {granted
               ? '🌟✨ WISH GRANTED! ✨🌟'
-              : '✨ WINTER FAIRY\'S WISHBOX ✨'}
+              : "✨ WINTER FAIRY'S WISHBOX ✨"}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 pt-6">
