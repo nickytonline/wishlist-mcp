@@ -1,7 +1,7 @@
 {
-  "name": "chatgpt-app-server",
+  "name": "mcp-ui-server",
   "version": "1.0.0",
-  "description": "MCP server for ChatGPT app template",
+  "description": "MCP server with MCP-UI widget support",
   "type": "module",
   "main": "dist/server.js",
   "exports": {

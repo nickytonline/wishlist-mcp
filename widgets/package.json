@@ -1,7 +1,7 @@
 {
-  "name": "chatgpt-app-widgets",
+  "name": "mcp-ui-widgets",
   "version": "1.0.0",
-  "description": "React widgets for ChatGPT app template",
+  "description": "React widgets for MCP-UI template",
   "type": "module",
   "scripts": {
     "dev": "vite",
