@@ -144,6 +144,23 @@ function createMcpServer(sessionId: string): Server {
         },
         annotations: { readOnlyHint: true, openWorldHint: true },
       },
+      {
+        name: 'grant_wish',
+        description:
+          "Grants a wish and displays it sparkling as granted! Use when user says a wish came true (e.g., 'My mittens wish came true!' or 'Grant the snow wish'). Fuzzy matches wish text.",
+        inputSchema: {
+          type: 'object',
+          properties: {
+            wish_text: {
+              type: 'string',
+              description:
+                'The text of the wish to grant (can be partial match, e.g., "mittens" or "snow wish")',
+            },
+          },
+          required: ['wish_text'],
+        },
+        annotations: { readOnlyHint: true, openWorldHint: true },
+      },
     ],
   }));
 
@@ -279,6 +296,63 @@ function createMcpServer(sessionId: string): Server {
             {
               type: 'text',
               text: `✨ Your Winter Fairy Wishbox contains ${wishes.length} wish${wishes.length !== 1 ? 'es' : ''}!`,
+            },
+            uiResource,
+          ],
+        };
+      }
+
+      if (name === 'grant_wish') {
+        const { wish_text } = args as { wish_text: string };
+        const wishes = sessionWishes.get(sessionId) || [];
+
+        // Fuzzy match: find wish that contains the text (case-insensitive)
+        const matchedWish = wishes.find((w) =>
+          w.wish.toLowerCase().includes(wish_text.toLowerCase())
+        );
+
+        if (!matchedWish) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `❌ Could not find a wish matching "${wish_text}". Try being more specific or use view_wishes to see all wishes.`,
+              },
+            ],
+          };
+        }
+
+        // Mark as granted
+        matchedWish.granted = true;
+        matchedWish.grantedAt = new Date().toISOString();
+
+        // Persist to disk
+        saveWishes();
+
+        const widgetUrl = getWidgetUrl('wish-box');
+        const data: WishToolOutput & { granted?: boolean; grantedAt?: string } = {
+          wish: matchedWish.wish,
+          category: matchedWish.category,
+          priority: matchedWish.priority,
+          timestamp: matchedWish.timestamp,
+          granted: matchedWish.granted,
+          grantedAt: matchedWish.grantedAt,
+        };
+
+        const uiResource = createUIResource({
+          uri: 'ui://wish-box',
+          content: {
+            type: 'externalUrl',
+            iframeUrl: `${widgetUrl}?data=${encodeURIComponent(JSON.stringify(data))}`,
+          },
+          encoding: 'text',
+        });
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `🌟✨ WISH GRANTED! ✨🌟\n\n💫 "${matchedWish.wish}" has been granted by the Winter Fairy!\n🎉 Granted at: ${new Date(matchedWish.grantedAt!).toLocaleString()}`,
             },
             uiResource,
           ],

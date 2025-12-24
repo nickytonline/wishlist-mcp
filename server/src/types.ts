@@ -50,6 +50,8 @@ export interface StoredWish {
   category: WishCategory;
   priority: WishPriority;
   timestamp: string;
+  granted?: boolean;
+  grantedAt?: string;
 }
 
 /**

@@ -13,6 +13,8 @@ export interface StoredWish {
   category: WishCategory;
   priority: WishPriority;
   timestamp: string;
+  granted?: boolean;
+  grantedAt?: string;
 }
 
 export interface WishListData {
@@ -55,9 +57,6 @@ const priorityBorderColor: Record<WishPriority, string> = {
 export default function App() {
   const toolOutput = useToolOutput<WishListData>();
   const wishes = toolOutput?.wishes || [];
-
-  console.log('[wish-list] toolOutput:', toolOutput);
-  console.log('[wish-list] wishes:', wishes);
 
   return (
     <Layout>
@@ -121,36 +120,58 @@ export default function App() {
               {wishes.map((wish) => (
                 <Card
                   key={wish.id}
-                  className="border-2 transition-all hover:scale-[1.02]"
+                  className={`border-2 transition-all hover:scale-[1.02] ${wish.granted ? 'animate-pulse' : ''}`}
                   style={{
-                    borderColor: priorityBorderColor[wish.priority],
-                    background: 'rgba(255, 255, 255, 0.9)',
-                    boxShadow: priorityGlow[wish.priority],
+                    borderColor: wish.granted
+                      ? 'rgba(255, 215, 0, 0.8)'
+                      : priorityBorderColor[wish.priority],
+                    background: wish.granted
+                      ? 'linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 255, 255, 0.9))'
+                      : 'rgba(255, 255, 255, 0.9)',
+                    boxShadow: wish.granted
+                      ? '0 0 20px rgba(255, 215, 0, 0.6), 0 0 40px rgba(255, 215, 0, 0.3)'
+                      : priorityGlow[wish.priority],
                   }}
                 >
                   <CardContent className="p-4">
                     <div className="flex items-start gap-3">
                       <span
-                        className="text-3xl"
+                        className={`text-3xl ${wish.granted ? 'animate-pulse' : ''}`}
                         style={{
-                          filter:
-                            wish.priority === 'dream wish'
+                          filter: wish.granted
+                            ? 'drop-shadow(0 0 16px rgba(255, 215, 0, 1))'
+                            : wish.priority === 'dream wish'
                               ? 'drop-shadow(0 0 12px rgba(255, 215, 0, 0.8))'
                               : 'drop-shadow(0 0 8px rgba(255, 215, 0, 0.4))',
                         }}
                       >
-                        {categoryEmojis[wish.category]}
+                        {wish.granted ? '⭐' : categoryEmojis[wish.category]}
                       </span>
                       <div className="flex-1">
-                        <p
-                          className="text-lg font-medium mb-2"
-                          style={{
-                            color: '#1a1a2e',
-                            fontFamily: 'var(--font-body)',
-                          }}
-                        >
-                          {wish.wish}
-                        </p>
+                        <div className="flex items-start gap-2 mb-2">
+                          <p
+                            className="text-lg font-medium flex-1"
+                            style={{
+                              color: '#1a1a2e',
+                              fontFamily: 'var(--font-body)',
+                            }}
+                          >
+                            {wish.wish}
+                          </p>
+                          {wish.granted && (
+                            <span
+                              className="text-xs font-bold px-2 py-1 rounded animate-pulse"
+                              style={{
+                                background:
+                                  'linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 215, 0, 0.15))',
+                                color: '#d4af37',
+                                border: '1px solid rgba(255, 215, 0, 0.5)',
+                              }}
+                            >
+                              ✨ GRANTED
+                            </span>
+                          )}
+                        </div>
                         <div
                           className="flex flex-wrap gap-4 text-sm"
                           style={{ color: '#0f3460' }}
@@ -176,12 +197,21 @@ export default function App() {
                               {wish.priority}
                             </span>
                           </span>
-                          <span
-                            className="text-xs"
-                            style={{ opacity: 0.7 }}
-                          >
-                            {new Date(wish.timestamp).toLocaleString()}
-                          </span>
+                          {wish.granted && wish.grantedAt ? (
+                            <span
+                              className="text-xs font-medium"
+                              style={{ color: '#d4af37' }}
+                            >
+                              🎉 Granted: {new Date(wish.grantedAt).toLocaleString()}
+                            </span>
+                          ) : (
+                            <span
+                              className="text-xs"
+                              style={{ opacity: 0.7 }}
+                            >
+                              Wished: {new Date(wish.timestamp).toLocaleString()}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
