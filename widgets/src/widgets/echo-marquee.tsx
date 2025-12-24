@@ -1,4 +1,4 @@
-import { useState, StrictMode } from 'react';
+import { useState, useEffect, StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { EchoMarquee } from '../echo-marquee/EchoMarquee';
 import { useOpenAiGlobal } from '../hooks/use-openai-global';
@@ -14,37 +14,57 @@ import type { EchoToolOutput } from 'chatgpt-app-server/types';
 import '../index.css';
 
 /**
- * Echo Marquee Widget
+ * Echo Marquee Widget - MCP-UI Compatible
  *
- * Demonstrates:
- * - Reading toolOutput from ChatGPT
- * - callTool API (widget→tool communication)
- * - Theme support (dark/light)
- * - Display mode detection and control
- * - Safe area handling for responsive layout
- * - Max height constraints
+ * Supports both:
+ * 1. MCP-UI: Data via URL query params
+ * 2. ChatGPT App: Data via window.openai (backward compatible)
  */
 export default function App() {
+  const [urlData, setUrlData] = useState<EchoToolOutput | null>(null);
+  
+  // Try to get data from window.openai (ChatGPT App SDK)
   const toolOutput = useOpenAiGlobal<EchoToolOutput>('toolOutput');
   const theme = useOpenAiGlobal('theme');
   const displayMode = useOpenAiGlobal('displayMode');
-  const safeArea = useOpenAiGlobal('safeArea');
-  const maxHeight = useOpenAiGlobal('maxHeight');
+
+  // On mount, check URL params for MCP-UI data
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const dataParam = params.get('data');
+    
+    if (dataParam) {
+      try {
+        const parsed = JSON.parse(decodeURIComponent(dataParam));
+        setUrlData(parsed);
+      } catch (err) {
+        console.error('Failed to parse URL data:', err);
+      }
+    }
+  }, []);
+
+  // Use URL data if available, otherwise fallback to window.openai
+  const data = urlData || toolOutput;
+  const message = data?.echoedMessage || 'No message yet';
+  const timestamp = data?.timestamp;
 
   const [callResult, setCallResult] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const message = toolOutput?.echoedMessage || 'No message yet';
-
   /**
-   * Demonstrate callTool API - call the echo tool from the widget
+   * Call tool - works with window.openai if available
    */
   const handleCallEcho = async () => {
+    if (!window.openai?.callTool) {
+      setCallResult('callTool not available in this environment');
+      return;
+    }
+
     setIsLoading(true);
     setCallResult(null);
 
     try {
-      const result = await window.openai?.callTool?.('echo', {
+      const result = await window.openai.callTool('echo', {
         message: `Re-echoing: ${message}`,
       });
 
@@ -58,100 +78,47 @@ export default function App() {
     }
   };
 
-  /**
-   * Demonstrate requestDisplayMode API - toggle fullscreen
-   */
-  const handleRequestFullscreen = async () => {
-    try {
-      await window.openai?.requestDisplayMode?.({ mode: 'fullscreen' });
-    } catch (err) {
-      console.error('Failed to request fullscreen:', err);
-    }
-  };
-
-  const containerStyle = {
-    paddingTop: safeArea?.insets?.top || 0,
-    paddingBottom: safeArea?.insets?.bottom || 0,
-    paddingLeft: safeArea?.insets?.left || 0,
-    paddingRight: safeArea?.insets?.right || 0,
-    maxHeight: maxHeight ? `${maxHeight}px` : '100vh',
-  };
-
   return (
-    <div
-      style={containerStyle}
-      className={`min-h-screen p-6 bg-background ${theme === 'dark' ? 'dark' : ''} max-w-4xl mx-auto space-y-6`}
-    >
-      {/* Header */}
-      <div className="text-center space-y-2">
-        <h1 className="text-3xl font-bold text-foreground">
-          Echo Marquee Widget
-        </h1>
-        <p className="text-muted-foreground">
-          Demonstrating ChatGPT widget APIs
-        </p>
-      </div>
-
-      {/* Main marquee */}
-      <EchoMarquee message={message} />
-
-      {/* Interactive controls */}
-      <Card>
+    <div className="min-h-screen p-4 bg-background">
+      <Card className="max-w-4xl mx-auto">
         <CardHeader>
-          <CardTitle>Widget APIs Demo</CardTitle>
+          <CardTitle>Echo Marquee</CardTitle>
           <CardDescription>
-            Test the ChatGPT widget integration features
+            Scrolling message display
+            {theme && ` • Theme: ${theme}`}
+            {displayMode && ` • Mode: ${displayMode}`}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex gap-2 flex-wrap">
-            {/* callTool demonstration */}
+          <EchoMarquee message={message} />
+          
+          {timestamp && (
+            <p className="text-sm text-muted-foreground text-center">
+              Echoed at: {new Date(timestamp).toLocaleString()}
+            </p>
+          )}
+
+          <div className="flex flex-col gap-2">
             <Button
-              variant="outline"
               onClick={handleCallEcho}
               disabled={isLoading}
-              className="w-fit"
+              className="w-full"
             >
-              Call echo tool from UI
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setCallResult(null)}
-              disabled={isLoading}
-              className="w-fit"
-            >
-              Clear Results
+              {isLoading ? 'Calling...' : 'Call Echo Tool Again'}
             </Button>
 
-            {/* requestDisplayMode demonstration */}
-            {displayMode !== 'fullscreen' && (
-              <Button
-                onClick={handleRequestFullscreen}
-                variant="outline"
-                className="w-fit"
-              >
-                View Fullscreen
-              </Button>
+            {callResult && (
+              <Card>
+                <CardContent className="pt-4">
+                  <p className="text-sm">{callResult}</p>
+                </CardContent>
+              </Card>
             )}
           </div>
-          <div className="flex gap-1 items-center">
-            <span>Call Result:</span>
-            <output>{isLoading ? 'Calling tool...' : callResult}</output>
-          </div>
 
-          <div className="pt-4 border-t space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Display Mode:</span>
-              <span className="font-medium text-foreground">
-                {displayMode || 'inline'}
-              </span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Theme:</span>
-              <span className="font-medium text-foreground">
-                {theme || 'light'}
-              </span>
-            </div>
+          <div className="text-xs text-muted-foreground">
+            <p>Data source: {urlData ? 'URL params (MCP-UI)' : toolOutput ? 'window.openai (ChatGPT)' : 'None'}</p>
+            {urlData && <p className="mt-1">✅ MCP-UI compatible mode</p>}
           </div>
         </CardContent>
       </Card>
@@ -159,6 +126,7 @@ export default function App() {
   );
 }
 
+// Mount widget
 const rootElement = document.getElementById('echo-marquee-root');
 if (rootElement) {
   createRoot(rootElement).render(
