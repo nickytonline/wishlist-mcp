@@ -71,8 +71,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
         >
           ✺
         </div>
-        {children}
       </div>
+      {children}
     </div>
   );
 }
