@@ -1,12 +1,12 @@
-# ChatGPT App Template
+# MCP-UI App Template
 
-A well-architected starter template demonstrating best practices for building [ChatGPT apps](https://developers.openai.com/apps-sdk/) using the [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) with [React](https://react.dev/) widgets. It leverages TypeScript, Tailwind CSS v4, Pino logging, Storybook, and Vitest for a robust development experience.
+A well-architected starter template demonstrating best practices for building [MCP-UI apps](https://mcpui.dev/) using the [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) with [React](https://react.dev/) widgets. It leverages TypeScript, Tailwind CSS v4, Pino logging, Storybook, and Vitest for a robust development experience.
 
 ## Features
 
 - **MCP Server** - Node.js server with base `Server` class (preserves `_meta` fields)
 - **Echo Tool** - Example tool with [Zod](https://zod.dev/) validation and widget response
-- **React Widgets** - Interactive marquee component with `callTool` demo
+- **React Widgets** - Interactive wish box component with `callTool` demo
 - **[Pino](https://getpino.io/) Logging** - Structured logging with pretty printing in development
 - **TypeScript** - Strict mode with ES2023 target
 - **[Tailwind CSS v4](https://tailwindcss.com/)** - Modern styling with dark mode support
@@ -20,16 +20,16 @@ A well-architected starter template demonstrating best practices for building [C
 
 ```mermaid
 graph TD
-    A[ChatGPT] -->|HTTPStreamable| B[MCP Server<br/>Node.js + Express]
+    A[MCP Client] -->|HTTPStreamable| B[MCP Server<br/>Node.js + Express]
     B -->|_meta.outputTemplate| C[Widget<br/>React in iframe]
 
     B -.-> B1[Echo Tool]
     B -.-> B2[Resource Registration]
     B -.-> B3[text/html+skybridge<br/>MIME type]
 
-    C -.-> C1[Reads window.openai.toolOutput]
-    C -.-> C2[Calls window.openai.callTool]
-    C -.-> C3[Theme, displayMode, safeArea]
+    C -.-> C1[Reads URL params for data]
+    C -.-> C2[postMessage for actions]
+    C -.-> C3[Responsive, accessible UI]
 
     style A fill:#e1f5ff
     style B fill:#fff4e6
@@ -52,8 +52,8 @@ graph TD
 ### Installation & Setup
 
 ```bash
-git clone https://github.com/pomerium/chatgpt-app-typescript-template your-chatgpt-app
-cd your-chatgpt-app
+git clone https://github.com/pomerium/wishlist-mcp your-mcp-ui-app
+cd your-mcp-ui-app
 npm install
 npm run dev
 ```
@@ -63,55 +63,55 @@ This starts both the MCP server and widget dev server:
 - **MCP Server**: `http://localhost:8080`
 - **Widget Assets**: `http://localhost:4444`
 
-> **Note:** The MCP server is a backend service. To test it, follow the ChatGPT connection steps below or use `npm run inspect` for local testing.
+> **Note:** The MCP server is a backend service. To test it, follow the MCP client connection steps below or use `npm run inspect` for local testing.
 
 You should see output indicating both servers are running successfully:
 
 ```
 ❯ npm run dev
 
-> chatgpt-app-typescript-template@1.0.0 dev
+> wishlist-mcp@1.0.0 dev
 > concurrently "npm run dev:server" "npm run dev:widgets"
 
 [1]
-[1] > chatgpt-app-typescript-template@1.0.0 dev:widgets
+[1] > wishlist-mcp@1.0.0 dev:widgets
 [1] > npm run dev --workspace=widgets
 [1]
 [0]
-[0] > chatgpt-app-typescript-template@1.0.0 dev:server
+[0] > wishlist-mcp@1.0.0 dev:server
 [0] > npm run dev --workspace=server
 [0]
 [1]
-[1] > chatgpt-app-widgets@1.0.0 dev
+[1] > mcp-ui-widgets@1.0.0 dev
 [1] > vite
 [1]
 [0]
-[0] > chatgpt-app-server@1.0.0 dev
+[0] > mcp-ui-server@1.0.0 dev
 [0] > tsx watch src/server.ts
 [0]
 [1]
 [1] Found 1 widget(s):
-[1]   - echo-marquee
+[1]   - wish-box
 [1]
 [1]
 [1]   VITE v6.4.1  ready in 151 ms
 [1]
 [1]   ➜  Local:   http://localhost:4444/
 [1]   ➜  Network: use --host to expose
-[0] [12:45:12] INFO: Starting ChatGPT App Template server
+[0] [12:45:12] INFO: Starting MCP-UI App Template server
 [0]     port: 8080
 [0]     nodeEnv: "development"
 [0]     logLevel: "info"
-[0]     assetsDir: "/Users/nicktaylor/dev/oss/chatgpt-app-typescript-template/assets"
+[0]     assetsDir: "/Users/nicktaylor/dev/oss/wishlist-mcp/assets"
 [0] [12:45:12] INFO: Server started successfully
 [0]     port: 8080
 [0]     mcpEndpoint: "http://localhost:8080/mcp"
 [0]     healthEndpoint: "http://localhost:8080/health"
 ```
 
-### Connect to ChatGPT
+### Connect to MCP Client
 
-To test your app in ChatGPT, you need to expose your local server publicly. The fastest way is using [Pomerium's SSH tunnel](https://www.pomerium.com/docs/tcp/ssh):
+To test your app in an MCP client (like ChatGPT or Claude Desktop), you need to expose your local server publicly. The fastest way is using [Pomerium's SSH tunnel](https://www.pomerium.com/docs/tcp/ssh):
 
 **1. Create a public tunnel** (in a new terminal, keep `npm run dev` running):
 
@@ -142,19 +142,24 @@ Look for the **Port Forward Status** section showing:
 - **Remote**: `https://template.first-wallaby-240.pom.run` (your unique URL)
 - **Local**: `http://localhost:8080` (your local server)
 
-**3. Add to ChatGPT:**
+**3. Add to MCP Client:**
 
+For **ChatGPT**:
 1. [Enable ChatGPT apps dev mode](https://platform.openai.com/docs/guides/developer-mode) in your ChatGPT settings
 2. Go to: **Settings → Connectors → Add Connector**
 3. Enter your Remote URL + `/mcp`, e.g. `https://template.first-wallaby-240.pom.run/mcp`
 4. Save the connector
 
+For **Claude Desktop** or other MCP clients:
+1. Configure the MCP server URL in your client's settings
+2. Use your Remote URL + `/mcp` endpoint
+
 **4. Test it:**
 
-1. Start a new chat in ChatGPT
-2. Add your app to the chat
-3. Send: `echo Hello from my ChatGPT app!`
-4. You should see the message displayed in a scrolling marquee widget
+1. Start a new chat in your MCP client
+2. Add your app to the chat (if applicable)
+3. Send: `echo hello world`
+4. You should see the message displayed in an interactive wish box widget
 
 The tunnel stays active as long as the SSH session is running.
 
@@ -164,7 +169,7 @@ Now that your app is working, you can:
 
 - **[Customize the echo tool](#adding-new-tools)** - Modify the example tool or add your own logic
 - **[Create a new widget](#widget-development)** - Build custom UI components for your tools
-- **[Test locally](#local-testing-with-mcp-inspector)** - Use `npm run inspect` for debugging without ChatGPT
+- **[Test locally](#local-testing-with-mcp-inspector)** - Use `npm run inspect` for debugging without an MCP client
 - **[Deploy to production](#production-deployment)** - Take your app live when ready
 
 ## Available Commands
@@ -255,28 +260,31 @@ This opens a browser interface to:
 - Inspect responses and metadata
 - Verify widget resources load correctly
 
-#### 2. Connect from ChatGPT
+#### 2. Connect from MCP Client
 
-For complete ChatGPT connection instructions, see the [Quick Start: Connect to ChatGPT](#connect-to-chatgpt) section above.
+For complete MCP client connection instructions, see the [Quick Start: Connect to MCP Client](#connect-to-mcp-client) section above.
 
 **Already connected?** After making code changes:
 
+For ChatGPT:
 1. **Settings → Connectors → Your App → Refresh**
 2. This reloads tool definitions and metadata
+
+For other MCP clients:
+1. Restart or refresh the connection as per your client's documentation
 
 **Production Setup:**
 
 When deploying to production:
 
 1. Deploy your server to a public URL (see [Production Deployment](#production-deployment))
-2. In ChatGPT: **Settings → Connectors → Add Connector**
-3. Enter your server URL: `https://your-domain.com/mcp`
-4. Test the `echo` tool in ChatGPT
+2. In your MCP client, add the connector with your server URL: `https://your-domain.com/mcp`
+3. Test the `echo` tool in your MCP client
 
 ## Project Structure
 
 ```
-chatgpt-app-template/
+wishlist-mcp/
 ├── server/                  # MCP server
 │   ├── src/
 │   │   ├── server.ts       # Main server with echo tool
@@ -290,25 +298,24 @@ chatgpt-app-template/
 ├── widgets/                 # React widgets
 │   ├── src/
 │   │   ├── widgets/
-│   │   │   └── echo-marquee.tsx   # Widget entry (includes mounting code)
-│   │   ├── echo-marquee/
-│   │   │   ├── EchoMarquee.tsx    # Shared components
-│   │   │   ├── EchoMarquee.stories.tsx
+│   │   │   └── wish-box.tsx       # Widget entry (includes mounting code)
+│   │   ├── wish-box/
+│   │   │   ├── WishBox.tsx        # Shared components
+│   │   │   ├── WishBox.stories.tsx
 │   │   │   └── styles.css
 │   │   ├── components/
 │   │   │   └── ui/              # ShadCN components
 │   │   ├── hooks/
-│   │   │   ├── use-openai-global.ts
-│   │   │   └── use-widget-state.ts
+│   │   │   └── [custom hooks]
 │   │   └── types/
-│   │       └── openai.d.ts
+│   │       └── [type definitions]
 │   ├── .storybook/         # Storybook config
 │   └── package.json        # Widget dependencies
 │
 ├── assets/                  # Asset build artifacts
-│   ├── echo-marquee.html
-│   ├── echo-marquee-[hash].js
-│   └── echo-marquee-[hash].css
+│   ├── wish-box.html
+│   ├── wish-box-[hash].js
+│   └── wish-box-[hash].css
 │
 ├── scripts/
 │   └── build-all.mts       # Parallel widget builds
@@ -369,18 +376,29 @@ Create `widgets/src/widgets/my-widget.tsx`:
 
 ```tsx
 // widgets/src/widgets/my-widget.tsx
-import { StrictMode } from 'react';
+import { StrictMode, useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import { useOpenAiGlobal } from '../hooks/use-openai-global';
 
 function MyWidget() {
-  const toolOutput = useOpenAiGlobal('toolOutput');
-  const theme = useOpenAiGlobal('theme');
+  const [data, setData] = useState(null);
+
+  // Read data from URL params (MCP-UI protocol)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const dataParam = params.get('data');
+    if (dataParam) {
+      try {
+        setData(JSON.parse(decodeURIComponent(dataParam)));
+      } catch (err) {
+        console.error('Failed to parse URL data:', err);
+      }
+    }
+  }, []);
 
   return (
-    <div className={theme === 'dark' ? 'dark' : ''}>
+    <div>
       <h1>My Widget</h1>
-      <pre>{JSON.stringify(toolOutput, null, 2)}</pre>
+      <pre>{JSON.stringify(data, null, 2)}</pre>
     </div>
   );
 }
@@ -433,13 +451,26 @@ Widgets include both the component and mounting code:
 **1. Create widget entry point** in `widgets/src/widgets/[name].tsx`:
 
 ```tsx
-import { StrictMode } from 'react';
+import { StrictMode, useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import { useOpenAiGlobal } from '../hooks/use-openai-global';
 
 function MyWidget() {
-  const toolOutput = useOpenAiGlobal('toolOutput');
-  return <div>Widget content</div>;
+  const [data, setData] = useState(null);
+
+  // Read data from URL params (MCP-UI protocol)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const dataParam = params.get('data');
+    if (dataParam) {
+      try {
+        setData(JSON.parse(decodeURIComponent(dataParam)));
+      } catch (err) {
+        console.error('Failed to parse URL data:', err);
+      }
+    }
+  }, []);
+
+  return <div>Widget content: {JSON.stringify(data)}</div>;
 }
 
 // Mounting code - required
@@ -467,76 +498,110 @@ The build system:
 - Bundles the component and mounting code together
 - Creates content-hashed bundles and HTML templates
 
-### window.openai API Reference
+### MCP-UI Widget API Reference
 
-#### State & Data
+#### Receiving Data from Tools
 
-```typescript
-const toolOutput = useOpenAiGlobal('toolOutput'); // Tool's structured content
-const toolInput = useOpenAiGlobal('toolInput'); // Tool arguments
-const [state, setState] = useWidgetState({ count: 0 }); // Persistent state
-```
-
-**State Limits**: Keep `widgetState` under **4,000 tokens** for optimal performance.
-
-#### Context Signals
+Widgets receive data via URL query parameters:
 
 ```typescript
-const theme = useOpenAiGlobal('theme'); // 'light' | 'dark'
-const displayMode = useOpenAiGlobal('displayMode'); // 'inline' | 'pip' | 'fullscreen'
-const maxHeight = useOpenAiGlobal('maxHeight'); // Max height in pixels
-const safeArea = useOpenAiGlobal('safeArea'); // Insets for responsive layout
-const viewport = useOpenAiGlobal('viewport'); // { width, height }
-const locale = useOpenAiGlobal('locale'); // User locale (e.g., 'en-US')
+useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  const dataParam = params.get('data');
+
+  if (dataParam) {
+    try {
+      const toolOutput = JSON.parse(decodeURIComponent(dataParam));
+      // Use toolOutput in your widget
+    } catch (err) {
+      console.error('Failed to parse URL data:', err);
+    }
+  }
+}, []);
 ```
 
-#### Runtime APIs
+#### Sending Actions via postMessage
+
+Widgets communicate with the MCP host using postMessage:
 
 ```typescript
-// Call other tools from widget
-const result = await window.openai?.callTool('tool_name', { arg: 'value' });
+// Call another tool
+window.parent.postMessage({
+  type: 'tool',
+  payload: {
+    toolName: 'my_tool',
+    params: { arg: 'value' }
+  }
+}, '*');
 
-// Toggle display mode
-await window.openai?.requestDisplayMode({ mode: 'fullscreen' });
+// Send a prompt to the host
+window.parent.postMessage({
+  type: 'prompt',
+  payload: {
+    prompt: 'Continue the conversation...'
+  }
+}, '*');
 
-// Send follow-up message
-await window.openai?.sendFollowUpMessage({ prompt: 'Continue...' });
-
-// File operations
-const { fileId } = await window.openai?.uploadFile(file);
-const { url } = await window.openai?.getFileDownloadUrl({ fileId });
-
-// Open external links
-window.openai?.openExternal({ href: 'https://example.com' });
-
-// Close widget
-await window.openai?.requestClose();
+// Send an intent (custom action)
+window.parent.postMessage({
+  type: 'intent',
+  payload: {
+    intent: 'open_external',
+    params: { href: 'https://example.com' }
+  }
+}, '*');
 ```
 
-### Example: Full Widget with Safe Area
+#### Best Practices
+
+- **Data parsing**: Always wrap JSON parsing in try-catch blocks
+- **Security**: Validate all data received from URL parameters
+- **Responsiveness**: Design widgets to work across different viewport sizes
+- **Accessibility**: Follow ARIA guidelines and semantic HTML
+- **Performance**: Keep initial bundle size under 500kb
+
+### Example: Full Widget with Interactions
 
 ```tsx
 // widgets/src/widgets/my-widget.tsx
-import { StrictMode, useState } from 'react';
+import { StrictMode, useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import { useOpenAiGlobal } from '../hooks/use-openai-global';
 
 function MyWidget() {
-  const toolOutput = useOpenAiGlobal('toolOutput');
-  const theme = useOpenAiGlobal('theme');
-  const safeArea = useOpenAiGlobal('safeArea');
+  const [data, setData] = useState(null);
   const [count, setCount] = useState(0);
 
-  const containerStyle = {
-    paddingTop: safeArea?.insets?.top || 0,
-    paddingBottom: safeArea?.insets?.bottom || 0,
+  // Read data from URL params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const dataParam = params.get('data');
+
+    if (dataParam) {
+      try {
+        setData(JSON.parse(decodeURIComponent(dataParam)));
+      } catch (err) {
+        console.error('Failed to parse URL data:', err);
+      }
+    }
+  }, []);
+
+  // Send action to host via postMessage
+  const handleCallTool = () => {
+    window.parent.postMessage({
+      type: 'tool',
+      payload: {
+        toolName: 'another_tool',
+        params: { count }
+      }
+    }, '*');
   };
 
   return (
-    <div style={containerStyle} className={theme === 'dark' ? 'dark' : ''}>
+    <div className="p-4">
       <h1>My Widget</h1>
-      <p>Tool output: {JSON.stringify(toolOutput)}</p>
+      <p>Tool output: {JSON.stringify(data)}</p>
       <button onClick={() => setCount(count + 1)}>Count: {count}</button>
+      <button onClick={handleCallTool}>Call Another Tool</button>
     </div>
   );
 }
@@ -612,13 +677,13 @@ return {
 ```json
 {
   "name": "echo",
-  "description": "Echoes back the user's message in a scrolling marquee widget",
+  "description": "Echoes the provided message and displays it in an interactive wish box widget",
   "inputSchema": {
     "type": "object",
     "properties": {
       "message": {
         "type": "string",
-        "description": "The message to echo back"
+        "description": "The message to echo"
       }
     },
     "required": ["message"]
@@ -632,14 +697,14 @@ return {
 {
   content: [{ type: 'text', text: 'Human-readable message' }],
   structuredContent: {
-    // JSON data passed to widget via window.openai.toolOutput
-    echoedMessage: 'Hello',
+    // JSON data passed to widget via URL params (?data=...)
+    message: 'hello world',
     timestamp: '2025-01-...'
   },
   _meta: {
     outputTemplate: {
       type: 'resource',
-      resource: { uri: 'ui://echo-marquee' }
+      resource: { uri: 'ui://wish-box' }
     }
   }
 }
@@ -675,7 +740,8 @@ npm run test:coverage
 - Component rendering
 - User interactions
 - Accessibility (a11y) compliance
-- window.openai API mocking
+- URL parameter parsing
+- postMessage interactions
 
 ### MCP Inspector Workflow
 
@@ -741,7 +807,7 @@ The server will:
 
 ```bash
 # Build image
-docker build -f docker/Dockerfile -t chatgpt-app:latest .
+docker build -f docker/Dockerfile -t mcp-ui-app:latest .
 
 # Run with docker-compose
 docker-compose -f docker/docker-compose.yml up -d
@@ -765,7 +831,7 @@ curl http://localhost:8080/health
 
 **Deployment Requirements:**
 
-- Deploy to a publicly accessible URL (ChatGPT requires HTTPS)
+- Deploy to a publicly accessible URL (most MCP clients require HTTPS)
 - Ensure `assets/` directory is deployed with the server
 - Configure reverse proxy if needed (nginx, Caddy, etc.)
 - Set up SSL/TLS certificates
@@ -780,24 +846,24 @@ curl http://localhost:8080/health
 
 ### Widget Not Loading
 
-**Symptom**: Widget doesn't appear in ChatGPT
+**Symptom**: Widget doesn't appear in your MCP client
 
 **Solutions**:
 
 1. Verify `text/html+skybridge` MIME type in resource registration
 2. Check assets directory exists: `ls assets/`
 3. Rebuild widgets: `npm run build:widgets`
-4. Restart server and refresh connector in ChatGPT
+4. Restart server and refresh connector in your MCP client
 
 ### Tool Not Listed
 
-**Symptom**: Tool doesn't appear in ChatGPT
+**Symptom**: Tool doesn't appear in your MCP client
 
 **Solutions**:
 
 1. Check server logs for errors
 2. Test with MCP Inspector: `npm run inspect`
-3. Refresh connector: Settings → Connectors → Refresh
+3. Refresh connector in your MCP client settings
 4. Verify tool schema is valid JSON Schema
 
 ### Session Issues
@@ -837,9 +903,9 @@ curl http://localhost:8080/health
 
 The template uses the **base `Server` class** from `@modelcontextprotocol/sdk/server/index.js`, not the higher-level `McpServer` class, because:
 
-- ChatGPT apps require the `_meta` field for widget references
+- MCP-UI apps require the `_meta` field for widget references
 - Higher-level abstractions might strip custom metadata
-- Proven pattern from OpenAI's official examples
+- Proven pattern from MCP-UI examples
 
 ### Why Node.js 22 + ES2023?
 
@@ -876,7 +942,7 @@ MIT
 
 **Built with**:
 
-- [OpenAI Apps SDK](https://developers.openai.com/apps-sdk/)
+- [MCP-UI](https://mcpui.dev/)
 - [Model Context Protocol](https://modelcontextprotocol.io/)
 - [React 19](https://react.dev/)
 - [Tailwind CSS v4](https://tailwindcss.com/)
