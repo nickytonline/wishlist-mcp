@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { useToolOutput } from '../hooks/use-tool-output';
+import { Layout } from '@/components/layout';
 import { WishBox, type WishData } from '@/components/wish-box';
 
 /**
@@ -12,7 +13,11 @@ import { WishBox, type WishData } from '@/components/wish-box';
 export default function App() {
   const toolOutput = useToolOutput<WishData>();
 
-  return <WishBox data={toolOutput || undefined} />;
+  return (
+    <Layout>
+      <WishBox data={toolOutput || undefined} />
+    </Layout>
+  );
 }
 
 // Mount widget
