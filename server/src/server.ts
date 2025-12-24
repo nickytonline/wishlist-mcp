@@ -23,7 +23,7 @@ import {
   type ReadResourceRequest,
 } from '@modelcontextprotocol/sdk/types.js';
 import { SessionManager } from './utils/session.js';
-import { EchoToolInputSchema, type EchoToolOutput } from './types.js';
+import { MakeAWishInputSchema, type WishToolOutput } from './types.js';
 
 config();
 
@@ -68,15 +68,27 @@ function createMcpServer(sessionId: string): Server {
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
     tools: [
       {
-        name: 'echo',
+        name: 'make_wish',
         description:
-          "Echoes back the user's message in a scrolling marquee widget",
+          "Adds a wish to the Winter Fairy's Wishbox and displays it in a magical winter-themed widget. Each wish has a category (toy/experience/kindness/magic) and priority (dream wish/hopeful wish/small wish).",
         inputSchema: {
           type: 'object',
           properties: {
             message: {
               type: 'string',
-              description: 'The message to echo back',
+              description: 'The wish to add to the wishbox',
+            },
+            category: {
+              type: 'string',
+              enum: ['toy', 'experience', 'kindness', 'magic'],
+              description: 'Category of the wish',
+              default: 'magic',
+            },
+            priority: {
+              type: 'string',
+              enum: ['dream wish', 'hopeful wish', 'small wish'],
+              description: 'How much they want it',
+              default: 'hopeful wish',
             },
           },
           required: ['message'],
@@ -100,9 +112,10 @@ function createMcpServer(sessionId: string): Server {
   server.setRequestHandler(ListResourceTemplatesRequestSchema, async () => ({
     resourceTemplates: [
       {
-        uriTemplate: 'ui://echo-marquee/{message}',
-        name: 'Echo Marquee Message',
-        description: 'Displays a custom message in the echo marquee widget',
+        uriTemplate: 'ui://wish-box/{message}',
+        name: 'Wish Box Message',
+        description:
+          "Displays a custom wish in the Winter Fairy's Wishbox widget",
         mimeType: 'text/uri-list',
       },
     ],
@@ -114,13 +127,15 @@ function createMcpServer(sessionId: string): Server {
     async (request: ReadResourceRequest) => {
       const { uri } = request.params;
 
-      // Handle template URIs like ui://echo-marquee/{message}
-      const templateMatch = uri.match(/^ui:\/\/echo-marquee\/(.+)$/);
+      // Handle template URIs like ui://wish-box/{message}
+      const templateMatch = uri.match(/^ui:\/\/wish-box\/(.+)$/);
       if (templateMatch) {
         const message = decodeURIComponent(templateMatch[1]);
-        const widgetUrl = getWidgetUrl('echo-marquee');
-        const data: EchoToolOutput = {
-          echoedMessage: message,
+        const widgetUrl = getWidgetUrl('wish-box');
+        const data: WishToolOutput = {
+          wish: message,
+          category: 'magic',
+          priority: 'hopeful wish',
           timestamp: new Date().toISOString(),
         };
 
@@ -148,15 +163,20 @@ function createMcpServer(sessionId: string): Server {
       const { name, arguments: args } = request.params;
       sessionLogger.info({ toolName: name, args }, 'Tool invoked');
 
-      if (name !== 'echo') throw new Error(`Unknown tool: ${name}`);
+      if (name !== 'make_wish') throw new Error(`Unknown tool: ${name}`);
 
-      const { message } = EchoToolInputSchema.parse(args);
+      const { message, category, priority } = MakeAWishInputSchema.parse(args);
       const timestamp = new Date().toISOString();
-      const widgetUrl = getWidgetUrl('echo-marquee');
-      const data: EchoToolOutput = { echoedMessage: message, timestamp };
+      const widgetUrl = getWidgetUrl('wish-box');
+      const data: WishToolOutput = {
+        wish: message,
+        category,
+        priority,
+        timestamp,
+      };
 
       const uiResource = createUIResource({
-        uri: 'ui://echo-marquee',
+        uri: 'ui://wish-box',
         content: {
           type: 'externalUrl',
           iframeUrl: `${widgetUrl}?data=${encodeURIComponent(JSON.stringify(data))}`,
@@ -165,7 +185,13 @@ function createMcpServer(sessionId: string): Server {
       });
 
       return {
-        content: [{ type: 'text', text: `Echoed: ${message}` }, uiResource],
+        content: [
+          {
+            type: 'text',
+            text: `✨ Wish added to the Winter Fairy's Wishbox!\n🌟 Wish: ${message}\n📦 Category: ${category}\n💫 Priority: ${priority}`,
+          },
+          uiResource,
+        ],
       };
     }
   );

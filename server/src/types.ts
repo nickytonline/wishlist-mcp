@@ -1,21 +1,44 @@
 import { z } from 'zod';
 
 /**
- * Echo tool input schema (Zod)
+ * Wish categories
  */
-export const EchoToolInputSchema = z.object({
-  message: z.string().min(1, 'Message cannot be empty'),
-});
-
-export type EchoToolInput = z.infer<typeof EchoToolInputSchema>;
+export const WishCategory = z.enum(['toy', 'experience', 'kindness', 'magic']);
+export type WishCategory = z.infer<typeof WishCategory>;
 
 /**
- * Echo tool structured content output
+ * Wish priorities
  */
-export interface EchoToolOutput {
-  echoedMessage: string;
+export const WishPriority = z.enum(['dream wish', 'hopeful wish', 'small wish']);
+export type WishPriority = z.infer<typeof WishPriority>;
+
+/**
+ * Make a wish tool input schema (Zod)
+ */
+export const MakeAWishInputSchema = z.object({
+  message: z.string().min(1, 'Wish cannot be empty'),
+  category: WishCategory.optional().default('magic'),
+  priority: WishPriority.optional().default('hopeful wish'),
+});
+
+export type MakeAWishInput = z.infer<typeof MakeAWishInputSchema>;
+
+/**
+ * Wish tool structured content output
+ */
+export interface WishToolOutput {
+  wish: string;
+  category: WishCategory;
+  priority: WishPriority;
   timestamp: string;
   [key: string]: unknown;
+}
+
+// Legacy aliases for backward compatibility
+export const EchoToolInputSchema = MakeAWishInputSchema;
+export type EchoToolInput = MakeAWishInput;
+export interface EchoToolOutput extends WishToolOutput {
+  echoedMessage: string;
 }
 
 /**
