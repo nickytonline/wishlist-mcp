@@ -42,6 +42,17 @@ export interface EchoToolOutput extends WishToolOutput {
 }
 
 /**
+ * Stored wish with metadata
+ */
+export interface StoredWish {
+  id: string;
+  wish: string;
+  category: WishCategory;
+  priority: WishPriority;
+  timestamp: string;
+}
+
+/**
  * Widget descriptor for tool metadata
  */
 export interface WidgetDescriptor {

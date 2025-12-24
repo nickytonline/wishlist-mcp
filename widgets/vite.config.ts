@@ -9,6 +9,9 @@ const isProd = process.env.NODE_ENV === 'production';
 const widgetPort = Number(process.env.WIDGET_PORT || 4444);
 
 export default defineConfig({
+  define: {
+    __DEFINES__: JSON.stringify({}),
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

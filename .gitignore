@@ -17,6 +17,7 @@ pids
 *.pid
 *.seed
 *.pid.lock
+.wishes.json
 
 # Diagnostic reports
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
