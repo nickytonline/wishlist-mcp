@@ -161,6 +161,23 @@ function createMcpServer(sessionId: string): Server {
         },
         annotations: { readOnlyHint: true, openWorldHint: true },
       },
+      {
+        name: 'release_wish',
+        description:
+          "Releases a wish from the Winter Fairy's Wishbox, letting it float away into the winter sky. Use when user wants to remove a wish (e.g., 'Remove the mittens wish' or 'Let go of my first wish'). Fuzzy matches wish text.",
+        inputSchema: {
+          type: 'object',
+          properties: {
+            wish_text: {
+              type: 'string',
+              description:
+                'The text of the wish to release (can be partial match, e.g., "mittens" or "first wish")',
+            },
+          },
+          required: ['wish_text'],
+        },
+        annotations: { readOnlyHint: true, openWorldHint: true },
+      },
     ],
   }));
 
@@ -353,6 +370,54 @@ function createMcpServer(sessionId: string): Server {
             {
               type: 'text',
               text: `🌟✨ WISH GRANTED! ✨🌟\n\n💫 "${matchedWish.wish}" has been granted by the Winter Fairy!\n🎉 Granted at: ${new Date(matchedWish.grantedAt!).toLocaleString()}`,
+            },
+            uiResource,
+          ],
+        };
+      }
+
+      if (name === 'release_wish') {
+        const { wish_text } = args as { wish_text: string };
+        const wishes = sessionWishes.get(sessionId) || [];
+
+        // Fuzzy match: find wish that contains the text (case-insensitive)
+        const matchedWishIndex = wishes.findIndex((w) =>
+          w.wish.toLowerCase().includes(wish_text.toLowerCase())
+        );
+
+        if (matchedWishIndex === -1) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `❌ Could not find a wish matching "${wish_text}". Try being more specific or use view_wishes to see all wishes.`,
+              },
+            ],
+          };
+        }
+
+        // Remove the wish
+        const [releasedWish] = wishes.splice(matchedWishIndex, 1);
+
+        // Persist to disk
+        saveWishes();
+
+        // Show updated wish list
+        const widgetUrl = getWidgetUrl('wish-list');
+        const uiResource = createUIResource({
+          uri: 'ui://wish-list',
+          content: {
+            type: 'externalUrl',
+            iframeUrl: `${widgetUrl}?data=${encodeURIComponent(JSON.stringify({ wishes }))}`,
+          },
+          encoding: 'text',
+        });
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `🍃✨ Wish Released! ✨🍃\n\n💨 "${releasedWish.wish}" has been released into the winter sky.\n🌟 ${wishes.length} wish${wishes.length !== 1 ? 'es' : ''} remaining in your Wishbox.`,
             },
             uiResource,
           ],
