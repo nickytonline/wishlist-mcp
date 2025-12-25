@@ -39,7 +39,7 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
 const SESSION_MAX_AGE = parseInt(process.env.SESSION_MAX_AGE || '3600000', 10);
 const WIDGET_PORT = parseInt(process.env.WIDGET_PORT || '4444', 10);
-const {BASE_URL} = process.env;
+const { BASE_URL } = process.env;
 
 const logger = pino({
   level: LOG_LEVEL,
@@ -64,7 +64,7 @@ function getWidgetUrl(widgetId: string): string {
   if (!BASE_URL) {
     throw new Error(
       'BASE_URL environment variable is required for production. ' +
-      'Set it to your public URL (e.g., BASE_URL=https://wishlist.yourdomain.com)'
+        'Set it to your public URL (e.g., BASE_URL=https://wishlist.yourdomain.com)'
     );
   }
 
@@ -220,182 +220,183 @@ function createMcpServer(sessionId: string): Server {
     }
   );
 
+  // tool call to UI mapping
+  const widgetRegistry: ReadonlyMap<string, string> = new Map([
+    ['make_wish', 'wish-box'],
+    ['grant_wish', 'wish-box'],
+    ['view_wishes', 'wish-list'],
+    ['release_wish', 'wish-list'],
+  ] as const);
+
+  type WidgetID =
+    typeof widgetRegistry extends Map<infer K, unknown> ? K : never;
+
+  function createWidget(widgetId: WidgetID, data: unknown) {
+    const widgetName = widgetRegistry.get(widgetId);
+    if (!widgetName) {
+      throw new Error(`Unknown widget: ${widgetId}`);
+    }
+
+    const widgetUrl = getWidgetUrl(widgetName);
+    return createUIResource({
+      uri: `ui://${widgetId}`,
+      content: {
+        type: 'externalUrl',
+        iframeUrl: `${widgetUrl}?data=${encodeURIComponent(JSON.stringify(data))}`,
+      },
+      encoding: 'text',
+    });
+  }
+
   server.setRequestHandler(
     CallToolRequestSchema,
     async (request: CallToolRequest): Promise<CallToolResult> => {
       const { name, arguments: args } = request.params;
       sessionLogger.info({ toolName: name, args }, 'Tool invoked');
 
-      if (name === 'make_wish') {
-        const { message, category, priority } = MakeAWishInputSchema.parse(args);
-        const timestamp = new Date().toISOString();
-        const wishId = uuidv4();
+      switch (name) {
+        case 'make_wish': {
+          const { message, category, priority } =
+            MakeAWishInputSchema.parse(args);
+          const timestamp = new Date().toISOString();
+          const wishId = uuidv4();
 
-        // Store the wish
-        if (!sessionWishes.has(sessionId)) {
-          sessionWishes.set(sessionId, []);
-        }
-        const wishes = sessionWishes.get(sessionId)!;
-        wishes.push({
-          id: wishId,
-          wish: message,
-          category,
-          priority,
-          timestamp,
-        });
+          // Store the wish
+          if (!sessionWishes.has(sessionId)) {
+            sessionWishes.set(sessionId, []);
+          }
+          const wishes = sessionWishes.get(sessionId)!;
+          wishes.push({
+            id: wishId,
+            wish: message,
+            category,
+            priority,
+            timestamp,
+          });
 
-        const widgetUrl = getWidgetUrl('wish-box');
-        const data: WishToolOutput = {
-          wish: message,
-          category,
-          priority,
-          timestamp,
-        };
+          const data: WishToolOutput = {
+            wish: message,
+            category,
+            priority,
+            timestamp,
+          };
 
-        const uiResource = createUIResource({
-          uri: 'ui://wish-box',
-          content: {
-            type: 'externalUrl',
-            iframeUrl: `${widgetUrl}?data=${encodeURIComponent(JSON.stringify(data))}`,
-          },
-          encoding: 'text',
-        });
+          const uiResource = createWidget(name, data);
 
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `✨ Wish added to the Winter Fairy's Wishbox!\n🌟 Wish: ${message}\n📦 Category: ${category}\n💫 Priority: ${priority}`,
-            },
-            uiResource,
-          ],
-        };
-      }
-
-      if (name === 'view_wishes') {
-        const wishes = sessionWishes.get(sessionId) || [];
-        const widgetUrl = getWidgetUrl('wish-list');
-
-        const uiResource = createUIResource({
-          uri: 'ui://wish-list',
-          content: {
-            type: 'externalUrl',
-            iframeUrl: `${widgetUrl}?data=${encodeURIComponent(JSON.stringify({ wishes }))}`,
-          },
-          encoding: 'text',
-        });
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `✨ Your Winter Fairy Wishbox contains ${wishes.length} wish${wishes.length !== 1 ? 'es' : ''}!`,
-            },
-            uiResource,
-          ],
-        };
-      }
-
-      if (name === 'grant_wish') {
-        const { wish_text } = args as { wish_text: string };
-        const wishes = sessionWishes.get(sessionId) || [];
-
-        // Fuzzy match: find wish that contains the text (case-insensitive)
-        const matchedWish = wishes.find((w) =>
-          w.wish.toLowerCase().includes(wish_text.toLowerCase())
-        );
-
-        if (!matchedWish) {
           return {
             content: [
               {
                 type: 'text',
-                text: `❌ Could not find a wish matching "${wish_text}". Try being more specific or use view_wishes to see all wishes.`,
+                text: `✨ Wish added to the Winter Fairy's Wishbox!\n🌟 Wish: ${message}\n📦 Category: ${category}\n💫 Priority: ${priority}`,
               },
+              uiResource,
             ],
           };
         }
 
-        // Mark as granted
-        matchedWish.granted = true;
-        matchedWish.grantedAt = new Date().toISOString();
+        case 'view_wishes': {
+          const wishes = sessionWishes.get(sessionId) || [];
+          const uiResource = createWidget(name, { wishes });
 
-        const widgetUrl = getWidgetUrl('wish-box');
-        const data: WishToolOutput & { granted?: boolean; grantedAt?: string } = {
-          wish: matchedWish.wish,
-          category: matchedWish.category,
-          priority: matchedWish.priority,
-          timestamp: matchedWish.timestamp,
-          granted: matchedWish.granted,
-          grantedAt: matchedWish.grantedAt,
-        };
-
-        const uiResource = createUIResource({
-          uri: 'ui://wish-box',
-          content: {
-            type: 'externalUrl',
-            iframeUrl: `${widgetUrl}?data=${encodeURIComponent(JSON.stringify(data))}`,
-          },
-          encoding: 'text',
-        });
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `🌟✨ WISH GRANTED! ✨🌟\n\n💫 "${matchedWish.wish}" has been granted by the Winter Fairy!\n🎉 Granted at: ${new Date(matchedWish.grantedAt!).toLocaleString()}`,
-            },
-            uiResource,
-          ],
-        };
-      }
-
-      if (name === 'release_wish') {
-        const { wish_text } = args as { wish_text: string };
-        const wishes = sessionWishes.get(sessionId) || [];
-
-        // Fuzzy match: find wish that contains the text (case-insensitive)
-        const matchedWishIndex = wishes.findIndex((w) =>
-          w.wish.toLowerCase().includes(wish_text.toLowerCase())
-        );
-
-        if (matchedWishIndex === -1) {
           return {
             content: [
               {
                 type: 'text',
-                text: `❌ Could not find a wish matching "${wish_text}". Try being more specific or use view_wishes to see all wishes.`,
+                text: `✨ Your Winter Fairy Wishbox contains ${wishes.length} wish${wishes.length !== 1 ? 'es' : ''}!`,
               },
+              uiResource,
             ],
           };
         }
 
-        // Remove the wish
-        const [releasedWish] = wishes.splice(matchedWishIndex, 1);
+        case 'grant_wish': {
+          const { wish_text } = args as { wish_text: string };
+          const wishes = sessionWishes.get(sessionId) || [];
 
-        // Show updated wish list
-        const widgetUrl = getWidgetUrl('wish-list');
-        const uiResource = createUIResource({
-          uri: 'ui://wish-list',
-          content: {
-            type: 'externalUrl',
-            iframeUrl: `${widgetUrl}?data=${encodeURIComponent(JSON.stringify({ wishes }))}`,
-          },
-          encoding: 'text',
-        });
+          // Fuzzy match: find wish that contains the text (case-insensitive)
+          const matchedWish = wishes.find((w) =>
+            w.wish.toLowerCase().includes(wish_text.toLowerCase())
+          );
 
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `🍃✨ Wish Released! ✨🍃\n\n💨 "${releasedWish.wish}" has been released into the winter sky.\n🌟 ${wishes.length} wish${wishes.length !== 1 ? 'es' : ''} remaining in your Wishbox.`,
-            },
-            uiResource,
-          ],
-        };
+          if (!matchedWish) {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `❌ Could not find a wish matching "${wish_text}". Try being more specific or use view_wishes to see all wishes.`,
+                },
+              ],
+            };
+          }
+
+          // Mark as granted
+          matchedWish.granted = true;
+          matchedWish.grantedAt = new Date().toISOString();
+
+          const data: WishToolOutput & {
+            granted?: boolean;
+            grantedAt?: string;
+          } = {
+            wish: matchedWish.wish,
+            category: matchedWish.category,
+            priority: matchedWish.priority,
+            timestamp: matchedWish.timestamp,
+            granted: matchedWish.granted,
+            grantedAt: matchedWish.grantedAt,
+          };
+
+          const uiResource = createWidget(name, data);
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `🌟✨ WISH GRANTED! ✨🌟\n\n💫 "${matchedWish.wish}" has been granted by the Winter Fairy!\n🎉 Granted at: ${new Date(matchedWish.grantedAt!).toLocaleString()}`,
+              },
+              uiResource,
+            ],
+          };
+        }
+
+        case 'release_wish': {
+          const { wish_text } = args as { wish_text: string };
+          const wishes = sessionWishes.get(sessionId) || [];
+
+          // Fuzzy match: find wish that contains the text (case-insensitive)
+          const matchedWishIndex = wishes.findIndex((w) =>
+            w.wish.toLowerCase().includes(wish_text.toLowerCase())
+          );
+
+          if (matchedWishIndex === -1) {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `❌ Could not find a wish matching "${wish_text}". Try being more specific or use view_wishes to see all wishes.`,
+                },
+              ],
+            };
+          }
+
+          // Remove the wish
+          const [releasedWish] = wishes.splice(matchedWishIndex, 1);
+
+          const uiResource = createWidget(name, { wishes });
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `🍃✨ Wish Released! ✨🍃\n\n💨 "${releasedWish.wish}" has been released into the winter sky.\n🌟 ${wishes.length} wish${wishes.length !== 1 ? 'es' : ''} remaining in your Wishbox.`,
+              },
+              uiResource,
+            ],
+          };
+        }
+
+        default:
+          throw new Error(`Unknown tool: ${name}`);
       }
-
-      throw new Error(`Unknown tool: ${name}`);
     }
   );
 
@@ -510,7 +511,12 @@ process.on('SIGINT', () => shutdown('SIGINT'));
 
 httpServer.listen(PORT, () => {
   logger.info(
-    { port: PORT, nodeEnv: NODE_ENV, widgetPort: WIDGET_PORT, baseUrl: BASE_URL },
+    {
+      port: PORT,
+      nodeEnv: NODE_ENV,
+      widgetPort: WIDGET_PORT,
+      baseUrl: BASE_URL,
+    },
     'MCP-UI server started'
   );
 
