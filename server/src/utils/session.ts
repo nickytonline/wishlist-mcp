@@ -50,10 +50,13 @@ export class SessionManager {
   /**
    * Delete a session
    */
-  delete(sessionId: string): boolean {
+  delete(sessionId: string, onDelete?: (sessionId: string) => void): boolean {
     const deleted = this.sessions.delete(sessionId);
 
     if (deleted) {
+      if (onDelete) {
+        onDelete(sessionId);
+      }
       this.logger.info({ sessionId, sessionCount: this.sessions.size }, 'Session deleted');
     }
 
@@ -63,7 +66,7 @@ export class SessionManager {
   /**
    * Cleanup stale sessions older than maxAge (in milliseconds)
    */
-  cleanup(maxAge: number): number {
+  cleanup(maxAge: number, onDelete?: (sessionId: string) => void): number {
     const now = Date.now();
     let cleaned = 0;
 
@@ -72,6 +75,9 @@ export class SessionManager {
 
       if (age > maxAge) {
         this.sessions.delete(sessionId);
+        if (onDelete) {
+          onDelete(sessionId);
+        }
         cleaned++;
 
         this.logger.info({ sessionId, age }, 'Cleaned up stale session');

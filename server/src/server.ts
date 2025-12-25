@@ -1,5 +1,5 @@
 import { createServer } from 'node:http';
-import fs from 'node:fs';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
@@ -33,7 +33,6 @@ config();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(__dirname, '..', '..');
 const ASSETS_DIR = path.resolve(ROOT_DIR, 'assets');
-const WISHES_DB = path.resolve(ROOT_DIR, '.wishes.json');
 
 const PORT = parseInt(process.env.PORT || '8080', 10);
 const NODE_ENV = process.env.NODE_ENV || 'development';
@@ -62,40 +61,8 @@ function getWidgetUrl(widgetId: string): string {
     : `/widgets/${widgetId}.html`;
 }
 
-// In-memory wish storage per session with file persistence
+// In-memory ephemeral wish storage per session
 const sessionWishes = new Map<string, StoredWish[]>();
-
-// Load wishes from disk on startup
-function loadWishes(): void {
-  try {
-    if (fs.existsSync(WISHES_DB)) {
-      const data = fs.readFileSync(WISHES_DB, 'utf-8');
-      const parsed = JSON.parse(data);
-      Object.entries(parsed).forEach(([sessionId, wishes]) => {
-        sessionWishes.set(sessionId, wishes as StoredWish[]);
-      });
-      logger.info({ count: sessionWishes.size }, 'Loaded wishes from disk');
-    }
-  } catch (err) {
-    logger.error({ err }, 'Failed to load wishes from disk');
-  }
-}
-
-// Save wishes to disk
-function saveWishes(): void {
-  try {
-    const data: Record<string, StoredWish[]> = {};
-    sessionWishes.forEach((wishes, sessionId) => {
-      data[sessionId] = wishes;
-    });
-    fs.writeFileSync(WISHES_DB, JSON.stringify(data, null, 2), 'utf-8');
-  } catch (err) {
-    logger.error({ err }, 'Failed to save wishes to disk');
-  }
-}
-
-// Load wishes on startup
-loadWishes();
 
 function createMcpServer(sessionId: string): Server {
   const server = new Server(
@@ -264,9 +231,6 @@ function createMcpServer(sessionId: string): Server {
           timestamp,
         });
 
-        // Persist to disk
-        saveWishes();
-
         const widgetUrl = getWidgetUrl('wish-box');
         const data: WishToolOutput = {
           wish: message,
@@ -343,9 +307,6 @@ function createMcpServer(sessionId: string): Server {
         matchedWish.granted = true;
         matchedWish.grantedAt = new Date().toISOString();
 
-        // Persist to disk
-        saveWishes();
-
         const widgetUrl = getWidgetUrl('wish-box');
         const data: WishToolOutput & { granted?: boolean; grantedAt?: string } = {
           wish: matchedWish.wish,
@@ -399,9 +360,6 @@ function createMcpServer(sessionId: string): Server {
         // Remove the wish
         const [releasedWish] = wishes.splice(matchedWishIndex, 1);
 
-        // Persist to disk
-        saveWishes();
-
         // Show updated wish list
         const widgetUrl = getWidgetUrl('wish-list');
         const uiResource = createUIResource({
@@ -439,7 +397,7 @@ app.use(
 );
 app.use(express.json());
 
-if (NODE_ENV !== 'development' && fs.existsSync(ASSETS_DIR)) {
+if (NODE_ENV !== 'development' && existsSync(ASSETS_DIR)) {
   app.use('/widgets', express.static(ASSETS_DIR));
 }
 
@@ -509,7 +467,11 @@ app.delete('/mcp', async (req, res) => {
     return res.status(404).json({ error: { message: 'Session not found' } });
 
   await session.transport.handleRequest(req, res);
-  (sessionManager as any).sessions.delete(sessionId);
+  sessionManager.delete(sessionId, (id) => {
+    // Clean up wishes for this session
+    sessionWishes.delete(id);
+    logger.info({ sessionId: id }, 'Cleaned up wishes for deleted session');
+  });
   return;
 });
 
@@ -517,7 +479,11 @@ function shutdown(signal: string) {
   logger.info({ signal }, 'Shutdown signal received');
   clearInterval(cleanupTimer);
   httpServer.close(() => {
-    sessionManager.cleanup(SESSION_MAX_AGE);
+    sessionManager.cleanup(SESSION_MAX_AGE, (id) => {
+      // Clean up wishes for this session
+      sessionWishes.delete(id);
+      logger.info({ sessionId: id }, 'Cleaned up wishes for session on shutdown');
+    });
     process.exit(0);
   });
   setTimeout(() => process.exit(1), 10000);
@@ -531,8 +497,11 @@ httpServer.listen(PORT, () => {
     { port: PORT, nodeEnv: NODE_ENV, widgetPort: WIDGET_PORT },
     'MCP-UI server started'
   );
-  cleanupTimer = setInterval(
-    () => sessionManager.cleanup(SESSION_MAX_AGE),
-    SESSION_MAX_AGE
-  );
+  cleanupTimer = setInterval(() => {
+    sessionManager.cleanup(SESSION_MAX_AGE, (id) => {
+      // Clean up wishes for this session
+      sessionWishes.delete(id);
+      logger.info({ sessionId: id }, 'Cleaned up wishes for stale session');
+    });
+  }, SESSION_MAX_AGE);
 });
