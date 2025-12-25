@@ -112,7 +112,7 @@ function createMcpServer(sessionId: string): Server {
           },
           required: ['message'],
         },
-        annotations: { readOnlyHint: true, openWorldHint: true },
+        annotations: { openWorldHint: true },
       },
       {
         name: 'view_wishes',
@@ -139,7 +139,7 @@ function createMcpServer(sessionId: string): Server {
           },
           required: ['wish_text'],
         },
-        annotations: { readOnlyHint: true, openWorldHint: true },
+        annotations: { openWorldHint: true },
       },
       {
         name: 'release_wish',
@@ -156,7 +156,7 @@ function createMcpServer(sessionId: string): Server {
           },
           required: ['wish_text'],
         },
-        annotations: { readOnlyHint: true, openWorldHint: true },
+        annotations: { destructiveHint: true, openWorldHint: true },
       },
     ],
   }));
