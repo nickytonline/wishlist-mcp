@@ -1,66 +1,58 @@
-export function Snowflakes() {
+import React from 'react';
+
+const SNOWFLAKE_CHARS = ['❄', '❅', '❆', '✻', '✼', '❉', '✺'];
+
+function randomSnowflake(i: number) {
+  const left = Math.random() * 100; // vw
+  const duration = 12 + Math.random() * 10; // 12s to 22s
+  const delay = Math.random() * 8; // 0s to 8s
+  const size = 2 + Math.random() * 2.5; // 2em to 4.5em
+  const opacity = 0.7 + Math.random() * 0.3;
+  const char =
+    SNOWFLAKE_CHARS[Math.floor(Math.random() * SNOWFLAKE_CHARS.length)];
+  return {
+    key: `snowflake-${i}`,
+    left,
+    duration,
+    delay,
+    size,
+    opacity,
+    char,
+  };
+}
+
+type SnowflakesProps = {
+  count?: number;
+};
+
+export function Snowflakes({ count = 100 }: SnowflakesProps) {
+  const snowflakes = React.useMemo(
+    () => Array.from({ length: count }, (_, i) => randomSnowflake(i)),
+    [count]
+  );
+
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden">
-      <div
-        className="snowflake text-4xl left-[10%]"
-        style={{ animationDelay: '0s', animationDuration: '15s' }}
-      >
-        ❄
-      </div>
-      <div
-        className="snowflake text-3xl left-[20%]"
-        style={{ animationDelay: '2s', animationDuration: '18s' }}
-      >
-        ❅
-      </div>
-      <div
-        className="snowflake text-5xl left-[30%]"
-        style={{ animationDelay: '4s', animationDuration: '20s' }}
-      >
-        ❆
-      </div>
-      <div
-        className="snowflake text-3xl left-[40%]"
-        style={{ animationDelay: '1s', animationDuration: '16s' }}
-      >
-        ✻
-      </div>
-      <div
-        className="snowflake text-4xl left-[50%]"
-        style={{ animationDelay: '3s', animationDuration: '19s' }}
-      >
-        ❄
-      </div>
-      <div
-        className="snowflake text-3xl left-[60%]"
-        style={{ animationDelay: '5s', animationDuration: '17s' }}
-      >
-        ❅
-      </div>
-      <div
-        className="snowflake text-4xl left-[70%]"
-        style={{ animationDelay: '2.5s', animationDuration: '21s' }}
-      >
-        ✼
-      </div>
-      <div
-        className="snowflake text-3xl left-[80%]"
-        style={{ animationDelay: '4.5s', animationDuration: '18s' }}
-      >
-        ❉
-      </div>
-      <div
-        className="snowflake text-5xl left-[90%]"
-        style={{ animationDelay: '1.5s', animationDuration: '22s' }}
-      >
-        ❆
-      </div>
-      <div
-        className="snowflake text-4xl left-[15%]"
-        style={{ animationDelay: '3.5s', animationDuration: '19s' }}
-      >
-        ✺
-      </div>
+    <div
+      className="relative inset-0 pointer-events-none overflow-hidden"
+      aria-hidden="true"
+    >
+      {snowflakes.map(({ key, left, duration, delay, size, opacity, char }) => (
+        <span
+          key={key}
+          className="snowflake select-none"
+          style={{
+            left: `${left}%`,
+            fontSize: `${size}em`,
+            opacity,
+            animationDuration: `${duration}s`,
+            animationDelay: `${delay}s`,
+            top: 0,
+            position: 'absolute',
+          }}
+        >
+          {char}
+        </span>
+      ))}
     </div>
   );
 }
