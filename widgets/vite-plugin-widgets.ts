@@ -229,12 +229,8 @@ await import(${JSON.stringify(widgetPath)});`,
           console.log(`  ${widget.name}.css → ${widget.name}-${cssHash}.css`);
         }
 
-        const widgetPort = process.env.WIDGET_PORT || '4444';
-        const defaultBaseUrl = `http://localhost:${widgetPort}`;
-        const baseUrlCandidate = process.env.BASE_URL?.trim() ?? '';
-        const baseUrlRaw =
-          baseUrlCandidate.length > 0 ? baseUrlCandidate : defaultBaseUrl;
-        const baseUrl = baseUrlRaw.replace(/\/+$/, '') || defaultBaseUrl;
+        // Use Vite's base config (already has /widgets/ appended in vite.config)
+        const baseUrl = config.base.replace(/\/+$/, '');
 
         const html = `<!doctype html>
 <html>

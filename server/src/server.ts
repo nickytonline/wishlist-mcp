@@ -39,6 +39,7 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
 const SESSION_MAX_AGE = parseInt(process.env.SESSION_MAX_AGE || '3600000', 10);
 const WIDGET_PORT = parseInt(process.env.WIDGET_PORT || '4444', 10);
+const {BASE_URL} = process.env;
 
 const logger = pino({
   level: LOG_LEVEL,
@@ -56,9 +57,21 @@ const logger = pino({
 });
 
 function getWidgetUrl(widgetId: string): string {
-  return NODE_ENV === 'development'
-    ? `http://localhost:${WIDGET_PORT}/${widgetId}.html`
-    : `/widgets/${widgetId}.html`;
+  if (NODE_ENV === 'development') {
+    return `http://localhost:${WIDGET_PORT}/${widgetId}.html`;
+  }
+
+  if (!BASE_URL) {
+    throw new Error(
+      'BASE_URL environment variable is required for production. ' +
+      'Set it to your public URL (e.g., BASE_URL=https://wishlist.yourdomain.com)'
+    );
+  }
+
+  // Strip trailing slash to avoid double slashes
+  const baseUrl = BASE_URL.replace(/\/$/, '');
+
+  return `${baseUrl}/widgets/${widgetId}.html`;
 }
 
 // In-memory ephemeral wish storage per session
@@ -392,6 +405,9 @@ function createMcpServer(sessionId: string): Server {
 const app = express();
 const httpServer = createServer(app);
 
+// Trust proxy headers from ingress/load balancer (required for k8s, etc.)
+app.set('trust proxy', true);
+
 app.use(
   pinoHttp({ logger, autoLogging: { ignore: (req) => req.url === '/health' } })
 );
@@ -470,7 +486,7 @@ app.delete('/mcp', async (req, res) => {
   sessionManager.delete(sessionId, (id) => {
     // Clean up wishes for this session
     sessionWishes.delete(id);
-    logger.info({ sessionId: id }, 'Cleaned up wishes for deleted session');
+    logger.info({ sessionId: id }, 'Cleaned up session data');
   });
   return;
 });
@@ -482,7 +498,7 @@ function shutdown(signal: string) {
     sessionManager.cleanup(SESSION_MAX_AGE, (id) => {
       // Clean up wishes for this session
       sessionWishes.delete(id);
-      logger.info({ sessionId: id }, 'Cleaned up wishes for session on shutdown');
+      logger.info({ sessionId: id }, 'Cleaned up session data on shutdown');
     });
     process.exit(0);
   });
@@ -494,14 +510,15 @@ process.on('SIGINT', () => shutdown('SIGINT'));
 
 httpServer.listen(PORT, () => {
   logger.info(
-    { port: PORT, nodeEnv: NODE_ENV, widgetPort: WIDGET_PORT },
+    { port: PORT, nodeEnv: NODE_ENV, widgetPort: WIDGET_PORT, baseUrl: BASE_URL },
     'MCP-UI server started'
   );
+
   cleanupTimer = setInterval(() => {
     sessionManager.cleanup(SESSION_MAX_AGE, (id) => {
-      // Clean up wishes for this session
+      // Clean up wishes for stale session
       sessionWishes.delete(id);
-      logger.info({ sessionId: id }, 'Cleaned up wishes for stale session');
+      logger.info({ sessionId: id }, 'Cleaned up stale session data');
     });
   }, SESSION_MAX_AGE);
 });
